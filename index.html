@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>合同收入递延计划 · 演示工具</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-theme="light">
+<header class="app-header">
+  <div>
+    <h1>合同收入递延计划 <span class="badge">演示工具 · 非会计合规意见</span></h1>
+    <p class="sub">按简化规则生成各期收入、递延余额与开票收款对照；支持变更版本与更正规则对比。所有金额单位为合同币种元，保留两位小数。</p>
+  </div>
+  <div class="header-actions">
+    <button id="themeToggle" class="btn btn-ghost" type="button">切换深色</button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- 左栏：合同管理 -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <h2>合同</h2>
+      <div class="btn-row">
+        <button id="newContractBtn" class="btn btn-primary" type="button">新建</button>
+        <button id="loadSamplesBtn" class="btn btn-ghost" type="button">载入样例</button>
+      </div>
+    </div>
+    <ul id="contractList" class="contract-list"></ul>
+    <div class="io-box">
+      <h3>数据导入 / 导出</h3>
+      <p class="hint">导入为整库 JSON（本页导出格式）或合同 ZIP/CSV 文本。</p>
+      <div class="btn-row wrap">
+        <button id="importJsonBtn" class="btn" type="button">导入 JSON</button>
+        <button id="importCsvBtn" class="btn" type="button">导入 CSV</button>
+        <button id="exportJsonBtn" class="btn" type="button">导出 JSON</button>
+        <button id="exportCsvBtn" class="btn" type="button">导出 CSV</button>
+      </div>
+      <input type="file" id="fileInput" accept=".json,.csv,.txt" hidden>
+    </div>
+  </aside>
+
+  <!-- 右栏：工作区 -->
+  <section class="workspace">
+    <div id="emptyState" class="empty-state">
+      <p>从左侧选择一份合同，或点击「载入样例」查看三份虚构合同：</p>
+      <ul>
+        <li>跨年云订阅 + 追溯调价（累计追补法）</li>
+        <li>软件许可与运维组合合同（独立售价分摊 · 闰日 · 合同延长）</li>
+        <li>跨年服务部分终止与部分退款（未来适用法 · 负数开票收款）</li>
+      </ul>
+    </div>
+
+    <div id="contractView" hidden>
+      <div class="cv-head">
+        <div>
+          <h2 id="cvName"></h2>
+          <p id="cvMeta" class="sub"></p>
+        </div>
+        <div class="btn-row">
+          <button id="editContractBtn" class="btn" type="button">编辑合同</button>
+        </div>
+      </div>
+
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="plan" role="tab" type="button">收入计划</button>
+        <button class="tab" data-tab="alloc" role="tab" type="button">分摊与项目</button>
+        <button class="tab" data-tab="compare" role="tab" type="button">版本对比</button>
+        <button class="tab" data-tab="rules" role="tab" type="button">规则说明</button>
+      </nav>
+
+      <!-- 收入计划 -->
+      <div class="tab-panel" data-panel="plan">
+        <div class="toolbar">
+          <label>计划版本
+            <select id="versionSelect"></select>
+          </label>
+          <span id="versionMeta" class="hint"></span>
+          <button id="exportScheduleBtn" class="btn btn-small" type="button">导出当前计划 CSV</button>
+        </div>
+        <div id="statTiles" class="stat-tiles"></div>
+        <div class="chart-card">
+          <h3>月度收入与开票收款（单一金额尺度，无第二坐标轴）</h3>
+          <div id="lineChart" class="chart-svg"></div>
+        </div>
+        <div class="chart-card">
+          <h3>月末递延收入余额（累计开票 − 累计确认收入）</h3>
+          <div id="barChart" class="chart-svg"></div>
+        </div>
+        <div class="table-card">
+          <h3>月度明细 <span class="hint">阴影行为锁定期间（已确认，不再改写）</span></h3>
+          <div class="table-scroll">
+            <table id="scheduleTable" class="data-table">
+              <thead>
+                <tr>
+                  <th>月份</th><th>确认收入</th><th>开票金额</th><th>收款金额</th>
+                  <th>累计收入</th><th>累计开票</th><th>累计收款</th>
+                  <th>递延余额</th><th>应收余额</th><th>计算依据 / 备注</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 分摊与项目 -->
+      <div class="tab-panel" data-panel="alloc" hidden>
+        <div class="table-card">
+          <h3>独立售价（SSP）分摊 — 尾差并入最后一项，全过程可追溯</h3>
+          <div class="table-scroll">
+            <table id="allocTable" class="data-table">
+              <thead>
+                <tr><th>履约项目</th><th>类型</th><th>独立售价</th><th>权重</th>
+                <th>比例分摊原值</th><th>基准分摊价</th><th>价格增量</th><th>本版本分摊价</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p id="allocFoot" class="hint"></p>
+        </div>
+        <div class="table-card">
+          <h3>各项目收入排期</h3>
+          <div id="poSchedules"></div>
+        </div>
+        <div class="table-card">
+          <h3>变更记录</h3>
+          <div class="table-scroll">
+            <table id="changeTable" class="data-table">
+              <thead><tr><th>类型</th><th>生效日</th><th>更正规则</th><th>说明</th><th>价格增量</th><th>新结束日</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 版本对比 -->
+      <div class="tab-panel" data-panel="compare" hidden>
+        <div class="toolbar">
+          <label>版本 A <select id="cmpA"></select></label>
+          <label>版本 B <select id="cmpB"></select></label>
+          <button id="exportCmpBtn" class="btn btn-small" type="button">导出对比 CSV</button>
+        </div>
+        <div id="cmpSummary" class="hint"></div>
+        <div class="table-scroll">
+          <table id="cmpTable" class="data-table">
+            <thead><tr><th>月份</th><th>A 版收入</th><th>B 版收入</th><th>差异 (B−A)</th><th>B 版状态</th><th>B 版依据</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 规则说明 -->
+      <div class="tab-panel" data-panel="rules" hidden>
+        <div id="rulesContent" class="rules-doc"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- 合同编辑弹层 -->
+<div id="modalBackdrop" class="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="合同编辑">
+    <div class="modal-head">
+      <h3 id="modalTitle">编辑合同</h3>
+      <button id="modalClose" class="btn btn-ghost" type="button">关闭</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot">
+      <button id="modalCancel" class="btn" type="button">取消</button>
+      <button id="modalSave" class="btn btn-primary" type="button">保存并重算</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="js/util.js"></script>
+<script src="js/engine.js"></script>
+<script src="data/samples.js"></script>
+<script src="js/store.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

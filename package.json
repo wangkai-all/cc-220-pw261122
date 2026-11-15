@@ -1,0 +1,11 @@
+{
+  "name": "revenue-deferral-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "合同收入递延计划演示工具（简化规则，非会计合规意见）",
+  "scripts": {
+    "test": "node tests/engine.test.js",
+    "start": "node -e \"const http=require('http'),fs=require('fs'),path=require('path');const port=process.env.PORT||8080;const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json'};http.createServer((req,res)=>{let p=path.join(process.cwd(),decodeURIComponent(req.url.split('?')[0]));if(req.url==='/')p=path.join(process.cwd(),'index.html');fs.readFile(p,(e,d)=>{if(e){res.writeHead(404);res.end('404');return;}res.writeHead(200,{'Content-Type':(types[path.extname(p)]||'text/plain')+';charset=utf-8'});res.end(d);});}).listen(port,()=>console.log('http://localhost:'+port));\""
+  },
+  "license": "UNLICENSED"
+}
